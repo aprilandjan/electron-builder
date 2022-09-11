@@ -11,7 +11,7 @@ import AutoUpdater = Electron.AutoUpdater
 import { execFileSync } from "child_process"
 
 /** 安装包发送给 squirrel 的安全操作时间间隔 */
-const SEND_TO_SQUIRREL_SAFE_TIME = 6000
+const SEND_TO_SQUIRREL_SAFE_TIME = 20000
 
 export class MacUpdater extends AppUpdater {
   private readonly nativeUpdater: AutoUpdater = require("electron").autoUpdater
@@ -75,11 +75,18 @@ export class MacUpdater extends AppUpdater {
     this.nativeUpdater.on("update-downloaded", () => {
       this.squirrelDownloadedUpdate = true
       this.debug("receive squirrel update ready")
-      // 非退出的情况下，当 update 准备好时，如果没有开启自动升级，则 abort squirrel
-      if (!this.isQuitting && !this._autoInstallOnAppQuit) {
-        this.debug("now its not quitting and not auto update, try abort squirrel")
-        this.abortSquirrelMacAutoUpdate()
-        return
+
+      if (!this.isQuitting) {
+        if (this._autoInstallOnAppQuit) {
+          // 开启自动升级以后，分发下载完成事件
+          this.dispatchUpdateDownloaded(this.lastDownloadEvent!)
+        }
+        // 非退出的情况下，当 update 准备好时，如果没有开启自动升级，则 abort squirrel
+        else {
+          this.debug("now its not quitting and not auto update, try abort squirrel")
+          this.abortSquirrelMacAutoUpdate()
+          return
+        }
       }
     })
   }
@@ -125,7 +132,7 @@ export class MacUpdater extends AppUpdater {
 
     this.debug(`schedule server in ${timeout}ms`)
     this.squirrelServerScheduleId = setTimeout(() => {
-      this.startSquirrelServer().catch(err => {
+      this.startSquirrelServer(false).catch(err => {
         this.debug(`start squirrel server error: ${err.message}`)
       })
     }, timeout)
@@ -217,7 +224,7 @@ export class MacUpdater extends AppUpdater {
     return this.startSquirrelServer(true)
   }
 
-  private async startSquirrelServer(dispatchEvent = true): Promise<Array<string>> {
+  private async startSquirrelServer(dispatchEvent: boolean): Promise<Array<string>> {
     if (!this.lastDownloadZipFileInfo || !this.lastDownloadEvent) {
       this.debug("cannot find last downloaded update files, give up squirrel setup")
       return []
@@ -305,17 +312,16 @@ export class MacUpdater extends AppUpdater {
           headers: { "Cache-Control": "no-cache" },
         })
 
-        // The update has been downloaded and is ready to be served to Squirrel
-        if (dispatchEvent) {
-          this.dispatchUpdateDownloaded(event)
-        }
-
         if (this._autoInstallOnAppQuit) {
           this.nativeUpdater.once("error", reject)
           // This will trigger fetching and installing the file on Squirrel side
           this.sendToSquirrelServer = server
           this.sendUpdateToSquirrel()
         } else {
+          // 如果未开启自动升级，则直接分发下载完成事件
+          if (dispatchEvent) {
+            this.dispatchUpdateDownloaded(this.lastDownloadEvent!)
+          }
           resolve([])
         }
       })
