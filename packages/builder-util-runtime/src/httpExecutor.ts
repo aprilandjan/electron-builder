@@ -485,6 +485,8 @@ function configurePipes(options: DownloadCallOptions, response: IncomingMessage)
   let lastStream = response
   for (const stream of streams) {
     stream.on("error", (error: Error) => {
+      // https://github.com/electron-userland/electron-builder/pull/7094
+      fileOut.close()
       if (!options.options.cancellationToken.cancelled) {
         options.callback(error)
       }
