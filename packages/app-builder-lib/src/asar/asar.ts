@@ -85,9 +85,17 @@ export class AsarFilesystem {
 
     const node = new Node()
     node.size = size
-    if (integrity) {
-      node.integrity = integrity
-    }
+    // FIXME: the integrity only works in electron macOS >= 15, and it is backwards compatible
+    // see these links below:
+    // electronjs docs: https://www.electronjs.org/docs/latest/tutorial/asar-integrity
+    // @electron/asar add file hash since v3.1.0: https://github.com/electron/asar/pull/221
+    // electron-builder add asar file hash since v23: https://github.com/electron-userland/electron-builder/pull/6556/files#diff-e4d62a4a8bd2e9b8576b3a0a8882046319f051ba24b4b3daaba7214b15d44966
+    // electron add asar integrity check since v15: https://github.com/electron/electron/pull/30667
+    // however, this leads to slightly performance impact on app launch and require files in asar
+    // so we decide to skip it because it is not important for us.
+    // if (integrity) {
+    //   node.integrity = integrity
+    // }
     if (unpacked) {
       node.unpacked = true
     } else {
