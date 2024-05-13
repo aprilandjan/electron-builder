@@ -114,6 +114,9 @@ export class MacUpdater extends AppUpdater {
     }
     this.squirrelDownloadedUpdate = false
     this.cancelScheduledSquirrelServer()
+    this.sendToSquirrelTime = 0
+    this.lastDownloadZipFileInfo = null
+    this.lastDownloadEvent = null
     this.debug("squirrel update aborted")
   }
 
