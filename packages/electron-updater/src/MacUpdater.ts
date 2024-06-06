@@ -56,7 +56,7 @@ export class MacUpdater extends AppUpdater {
         // squirrel 未准备好，尝试开启
         // 反复调用时，可能存在重复 server
         this.debug("squirrel is not ready, try start it")
-        this.scheduleSquirrelServerSafely()
+        this.ensureScheduledSquirrelServer()
       }
     } else {
       this.debug("turn off auto install")
@@ -130,6 +130,21 @@ export class MacUpdater extends AppUpdater {
     this.cancelScheduledSquirrelServer()
     this.clearServer()
     this.debug("squirrel update aborted")
+  }
+
+  /** 确保发送给 squirrel 的资源服务器已在流程中 */
+  private ensureScheduledSquirrelServer() {
+    // 服务已建立，但未发送到 squirrel, 则发送给 squirrel
+    // 应对未选择自动更新，但又手动调用了该方法的情况
+    // 防止重复触发 checkForUpdate 导致的报错 The command is disabled and cannot be executed
+    if (this.server?.listening && this.sendToSquirrelServer !== this.server) {
+      this.debug("server is listening and not used yet, send update to squirrel")
+      this.sendUpdateToSquirrel()
+    } else {
+      // 其他情况存在 squirrel 真实状态的不确定性，等待一段时间降低不确定性
+      this.debug("server is not listening, schedule server")
+      this.scheduleSquirrelServerSafely()
+    }
   }
 
   /** 发送安装包到 squirrel */
@@ -354,18 +369,7 @@ export class MacUpdater extends AppUpdater {
         this.debug("quit and install receive update downloaded")
         this.nativeUpdater.quitAndInstall()
       })
-      this._autoInstallOnAppQuit = true
-      // 服务在监听状态，且未发送到 squirrel, 则发送给 squirrel
-      // 应对未选择自动更新，但又手动调用了该方法的情况
-      // 防止重复触发 checkForUpdate 导致的报错 The command is disabled and cannot be executed
-      if (this.server?.listening && this.sendToSquirrelServer !== this.server) {
-        this.debug("server is listening and not used yet, send update to squirrel")
-        this.sendUpdateToSquirrel()
-      } else {
-        // 其他情况存在 squirrel 真实状态的不确定性，等待几秒降低不确定性
-        this.debug("server is not listening, schedule server")
-        this.scheduleSquirrelServerSafely()
-      }
+      this.ensureScheduledSquirrelServer()
     }
   }
 }
