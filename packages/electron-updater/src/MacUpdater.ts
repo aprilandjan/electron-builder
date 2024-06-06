@@ -91,6 +91,20 @@ export class MacUpdater extends AppUpdater {
     })
   }
 
+  /**
+   * 删除实例上的全部事件(并且重置时例状态)
+   * !FIXME: 由于 AppUpdater 并没有定义 reset 之类的方法，此处兼做一些重置状态的工作
+   */
+  public removeAllListeners(): this {
+    // 重置已下载的状态
+    this.sendToSquirrelTime = 0
+    this.lastDownloadZipFileInfo = null
+    this.lastDownloadEvent = null
+    this.abortSquirrelMacAutoUpdate()
+
+    return super.removeAllListeners()
+  }
+
   private debug(message: string): void {
     if (this._logger.debug != null) {
       this._logger.debug(message)
@@ -114,9 +128,7 @@ export class MacUpdater extends AppUpdater {
     }
     this.squirrelDownloadedUpdate = false
     this.cancelScheduledSquirrelServer()
-    this.sendToSquirrelTime = 0
-    this.lastDownloadZipFileInfo = null
-    this.lastDownloadEvent = null
+    this.clearServer()
     this.debug("squirrel update aborted")
   }
 
